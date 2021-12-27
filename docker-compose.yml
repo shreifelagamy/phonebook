@@ -1,0 +1,36 @@
+version: '3.4'
+
+services:
+  phonebook:
+    container_name: phonebook-app
+    image: phonebook
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - './src:/var/www/html'
+    ports:
+      - 80:80
+
+  mysql:
+    container_name: phonebook-db
+    image: mysql:8
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - './docker/mysql:/docker-entrypoint-initdb.d'
+      - mysql-db:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=phonebook
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=app
+      - MYSQL_PASSWORD=app
+
+  adminer:
+    container_name: phonebook-adminer
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+volumes:
+  mysql-db:

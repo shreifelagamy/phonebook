@@ -1,0 +1,266 @@
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phonebook</title>
+    <!-- CSS only -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css"
+      integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
+
+  </head>
+
+  <body>
+    <div class="container">
+      <button class="btn btn-primary" id="addPhonebook">Add phonebook</button>
+
+      <table class="table" id="phonebooks">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Name</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="modal fade" id="phoneBookModal" tabindex="-1" role="dialog" aria-labelledby="phoneBookLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="phoneBookLabel">Add Phonebook</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <form action="phonebook-crud.php" method="post" id="create-form">
+                <div class="form-group">
+                  <label for="name">Name</label>
+                  <input type="text" name="name" class="form-control" id="name" placeholder="Enter name">
+                </div>
+
+                <div class="form-group">
+                  <label for="phone">Phone</label>
+                  <div class="input-group">
+                    <input type="text" name="phone[]" class="form-control phone" id="phone" placeholder="Enter Phone">
+                    <div class="input-group-append">
+                      <button class="btn btn-success" id="addPhone">+</button>
+                    </div>
+                  </div>
+
+                </div>
+
+                <input type="hidden" name="action" id="action" value="create">
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="submit">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="viewPhoneBookModal" tabindex="-1" role="dialog" aria-labelledby="viewPhoneBookLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="viewPhoneBookLabel">Phonebook</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>
+                <b>Name:</b>
+                <span id="viewName"></span>
+              </p>
+
+              <p>
+                <b>Phones:</b>
+                <span id="viewPhone"></span>
+              </p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-fQybjgWLrvvRgtW6bFlB7jaZrFsaBXjsOMm/tB9LTS58ONXgqbR9W8oWht/amnpF"
+      crossorigin="anonymous"></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+      $(document).ready(function () {
+        loadData();
+
+        let phoneBookModal = $('#phoneBookModal');
+        let actionBtn = $('#submit')
+        let addPhone = $('#addPhone');
+
+        $('#addPhonebook').on('click', function (e) {
+          phoneBookModal.modal('show');
+        })
+
+        addPhone.on('click', function (e) {
+          e.preventDefault();
+
+          $(this).closest('.form-group').append(`
+            <div class="input-group mt-2">
+              <input type="text" name="phone[]" class="form-control" placeholder="Enter Phone">
+              <div class="input-group-append">
+                <button class="btn btn-danger removePhone">-</button>
+              </div>
+            </div>
+          `);
+        });
+
+        $(document).on('click', '.removePhone', function (e) {
+          e.preventDefault();
+
+          $(this).closest('.input-group').remove();
+        })
+
+        actionBtn.on('click', function () {
+          let name = $('#name').val();
+          let phone = $('input[name="phone[]"]').map(function () {
+            return this.value;
+          }).get();
+          let action = $('#action').val();
+
+          $.ajax({
+            method: 'POST',
+            url: 'routes.php',
+            data: {
+              data: {
+                name,
+                phone
+              },
+              action
+            },
+            beforeSend: function () {
+              phoneBookModal.find('.modal-body .alert').remove();
+            },
+            success: function () {
+              phoneBookModal.modal('hide')
+
+              loadData()
+
+              $('#create-form').trigger('reset')
+              $('.removePhone').closest('.input-group').remove()
+            },
+            error: function (xhr, status, errorThrown) {
+              let errorHtml = `<div class="alert alert-danger">${xhr.responseJSON.error[0]}</div>`;
+
+              phoneBookModal.find('.modal-body').prepend(errorHtml)
+            }
+          })
+        })
+
+        function loadData() {
+          let phonebooks = $('#phonebooks');
+          let viewModal = $('#viewPhoneBookModal');
+
+          phonebooks.find('tbody tr').remove();
+
+          $.ajax({
+            method: 'GET',
+            url: 'routes.php',
+            success: function (res) {
+              if (res.data.length > 0) {
+                res.data.forEach(function (item) {
+                  phonebooks.find('tbody').append(`
+                    <tr>
+                      <td>${item.id}</td>
+                      <td>${item.name}</td>
+                      <td>
+                        <button class="btn btn-danger delete" data-id="${item.id}">Delete</button>
+                        <button class="btn btn-success view" data-name="${item.name}" data-phones="${item.phone}">View</button>
+                      </td>
+                    </tr>
+                  `)
+                });
+              }
+            }
+          })
+
+          $(document).on('click', '.delete', function (e) {
+            e.preventDefault();
+
+            let id = $(this).data('id');
+
+            Swal.fire({
+              title: 'Are you sure?',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+              confirmButtonText: 'Yes, delete it!',
+              showLoaderOnConfirm: true,
+              allowOutsideClick: () => !Swal.isLoading(),
+              preConfirm: () => {
+                return $.ajax({
+                  method: 'POST',
+                  url: 'routes.php',
+                  data: {
+                    data: {
+                      id
+                    },
+                    action: 'DELETE'
+                  },
+                  error: function (err) {
+                    Swal.showValidationMessage(
+                      `${err.responseJSON.error}`
+                    )
+
+                    return false
+                  },
+                  success: function () {
+                    Swal.fire(
+                      'Deleted!',
+                      'phonebook has been deleted.',
+                      'success'
+                    )
+
+                    loadData()
+
+                    return true
+                  },
+                  complete: function () {
+                    Swal.hideLoading();
+                  }
+                })
+              }
+            })
+
+
+          })
+
+
+          $(document).on('click', '.view', function (e) {
+            e.preventDefault()
+
+            let name = $(this).data('name');
+            let phone = $(this).data('phones');
+
+            viewModal.find('#viewName').text(name)
+            viewModal.find('#viewPhone').text(phone)
+            viewModal.modal('show')
+          })
+        }
+
+      })
+    </script>
+  </body>
+
+</html>
