@@ -3,8 +3,8 @@
 class PhoneBook
 {
     protected $servername = "mysql";
-    protected $username = "root";
-    protected $password = "root";
+    protected $username = "app";
+    protected $password = "app";
     protected $database = "phonebook";
     protected $port = 3306;
 
